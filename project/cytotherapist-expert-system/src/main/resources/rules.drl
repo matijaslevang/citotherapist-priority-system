@@ -1,0 +1,238 @@
+package com.projekat.citoterapija;
+
+import com.projekat.citoterapija.Pacijent;
+import com.projekat.citoterapija.SistemStatus;
+import com.projekat.citoterapija.StatusPoruka;
+
+// ==========================================
+// OPŠTA PRAVILA ZA PRIORITIZACIJU I OPTIMIZACIJU
+// ==========================================
+
+rule "Pravilo 1 - Prijem pacijenta"
+    when
+        $status: SistemStatus(brojPacijenataNaPrijemu > 0, radSaPacijentima == true)
+    then
+        System.out.println("Naredba sestre: Primi pacijenta (nasumičan izbor).");
+        // U realnom sistemu ovde bi se umanjio broj pacijenata koji čekaju i uveo novi Pacijent u sesiju
+end
+
+rule "Pravilo 2 - Pacijent stariji od 65 godina"
+    when
+        $p: Pacijent(starost > 65)
+    then
+        System.out.println("Naredba sestre: Izuzetno pažljivo plasirati trajnu iglu!");
+end
+
+rule "Pravilo 3 - Više sestara na papirologiji"
+    when
+        $status: SistemStatus(brojSestaraPapirologija > brojSestaraPacijenti)
+    // Može se dodati i provera cilja optimalnosti (pola-pola)
+    then
+        modify($status) {
+            setBrojSestaraPapirologija($status.getBrojSestaraPapirologija() - 1),
+            setBrojSestaraPacijenti($status.getBrojSestaraPacijenti() + 1)
+        };
+        System.out.println("Sistem: Sestra je poslata iz papirologije da radi sa pacijentima.");
+end
+
+rule "Pravilo 4 - Više sestara sa pacijentima"
+    when
+        $status: SistemStatus(brojSestaraPacijenti > brojSestaraPapirologija)
+    then
+        modify($status) {
+            setBrojSestaraPacijenti($status.getBrojSestaraPacijenti() - 1),
+            setBrojSestaraPapirologija($status.getBrojSestaraPapirologija() + 1)
+        };
+        System.out.println("Sistem: Sestra je poslata iz rada sa pacijentima u papirologiju.");
+end
+
+rule "Pravilo 5 - Došao hitan pacijent"
+    when
+        StatusPoruka(poruka == "DOSAO_HITAN_PACIJENT")
+        $status: SistemStatus(brojSestaraPapirologija > 0)
+    then
+        modify($status) {
+            setBrojSestaraPacijenti($status.getBrojSestaraPacijenti() + $status.getBrojSestaraPapirologija()),
+            setBrojSestaraPapirologija(0)
+        };
+        System.out.println("Naredba: Sve medicinske sestre se šalju da rade sa hitnim pacijentom!");
+end
+
+rule "Pravilo 6 - Lekar je obavešten"
+    when
+        StatusPoruka(poruka == "LEKAR_OBAVESTEN")
+    then
+        System.out.println("Naredba sestre: Slušati smernice lekara.");
+end
+
+rule "Pravilo 7 - Lekar je hitno obavešten"
+    when
+        StatusPoruka(poruka == "LEKAR_HITNO_OBAVESTEN")
+    then
+        System.out.println("Naredba sestre: Jako pažljivo slušati smernice lekara.");
+end
+
+
+// ==========================================
+// PRAVILA ZA PRIPREMU ZA TERAPIJU (FORWARD-CHAINING)
+// ==========================================
+
+// --- Kategorizacija Temperature ---
+
+rule "Temperatura - Izuzetno niska"
+    salience 100
+    when
+        $p: Pacijent(temperatura < 35.2, kategorijaTemperature != "IZUZETNO_NISKA")
+    then
+        modify($p) { setKategorijaTemperature("IZUZETNO_NISKA") };
+end
+
+rule "Temperatura - Niska"
+    salience 100
+    when
+        $p: Pacijent(temperatura >= 35.2 && temperatura < 36.2, kategorijaTemperature != "NISKA")
+    then
+        modify($p) { setKategorijaTemperature("NISKA") };
+end
+
+rule "Temperatura - Normalna"
+    salience 100
+    when
+        $p: Pacijent(temperatura >= 36.2 && temperatura <= 37.2, kategorijaTemperature != "NORMALNA")
+    then
+        modify($p) { setKategorijaTemperature("NORMALNA") };
+end
+
+rule "Temperatura - Povišena"
+    salience 100
+    when
+        $p: Pacijent(temperatura > 37.2 && temperatura <= 38.0, kategorijaTemperature != "POVISENA")
+    then
+        modify($p) { setKategorijaTemperature("POVISENA") };
+end
+
+rule "Temperatura - Visoka"
+    salience 100
+    when
+        $p: Pacijent(temperatura > 38.0 && temperatura <= 39.0, kategorijaTemperature != "VISOKA")
+    then
+        modify($p) { setKategorijaTemperature("VISOKA") };
+end
+
+rule "Temperatura - Izuzetno visoka"
+    salience 100
+    when
+        $p: Pacijent(temperatura > 39.0, kategorijaTemperature != "IZUZETNO_VISOKA")
+    then
+        modify($p) { setKategorijaTemperature("IZUZETNO_VISOKA") };
+end
+
+
+// --- Kategorizacija Pritiska ---
+
+rule "Pritisak - Normalan"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak >= 115 && gornjiPritisak <= 122,
+                     donjiPritisak >= 68 && donjiPritisak <= 72,
+                     kategorijaPritiska != "NORMALAN")
+    then
+        modify($p) { setKategorijaPritiska("NORMALAN") };
+end
+
+rule "Pritisak - Nizak"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak >= 90 && gornjiPritisak < 115,
+                     donjiPritisak >= 60 && donjiPritisak < 68,
+                     kategorijaPritiska != "NIZAK")
+    then
+        modify($p) { setKategorijaPritiska("NIZAK") };
+end
+
+rule "Pritisak - Izuzetno nizak"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak < 90 || donjiPritisak < 60,
+                     kategorijaPritiska != "IZUZETNO_NIZAK")
+    then
+        modify($p) { setKategorijaPritiska("IZUZETNO_NIZAK") };
+end
+
+rule "Pritisak - Povišen"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak > 122 && gornjiPritisak <= 130,
+                     donjiPritisak > 72 && donjiPritisak <= 80,
+                     kategorijaPritiska != "POVISEN")
+    then
+        modify($p) { setKategorijaPritiska("POVISEN") };
+end
+
+rule "Pritisak - Visok"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak > 130 && gornjiPritisak <= 150,
+                     donjiPritisak > 80 && donjiPritisak <= 90,
+                     kategorijaPritiska != "VISOK")
+    then
+        modify($p) { setKategorijaPritiska("VISOK") };
+end
+
+rule "Pritisak - Izuzetno visok"
+    salience 100
+    when
+        $p: Pacijent(gornjiPritisak > 150 || donjiPritisak > 90,
+                     kategorijaPritiska != "IZUZETNO_VISOK")
+    then
+        modify($p) { setKategorijaPritiska("IZUZETNO_VISOK") };
+end
+
+
+// --- Logički zaključci na osnovu stanja i tegoba (Forward-Chaining akcije) ---
+
+rule "Žaljenje na bolove ili tegobe -> Obavesti lekara"
+    salience 50
+    when
+        $p: Pacijent(zaliSeNaBolove == true || zaliSeNaTegobe == true)
+        not(StatusPoruka(poruka == "LEKAR_OBAVESTEN" || poruka == "LEKAR_HITNO_OBAVESTEN"))
+    then
+        insert(new StatusPoruka("LEKAR_OBAVESTEN"));
+        System.out.println("Sistem: Pacijent se žali na bolove/tegobe. Okida se obaveštenje lekaru.");
+end
+
+rule "Izuzetno kritični parametri -> Hitno obavesti lekara"
+    salience 60
+    when
+        $p: Pacijent(kategorijaTemperature == "IZUZETNO_NISKA" ||
+                     kategorijaTemperature == "IZUZETNO_VISOKA" ||
+                     kategorijaTemperature == "IZUZETNO_NIZAK" ||
+                     kategorijaTemperature == "IZUZETNO_VISOK")
+        not(StatusPoruka(poruka == "LEKAR_HITNO_OBAVESTEN"))
+    then
+        insert(new StatusPoruka("LEKAR_HITNO_OBAVESTEN"));
+        System.out.println("Sistem: Detektovane izuzetno kritične vrednosti! Hitno se obaveštava lekar.");
+end
+
+rule "Umereno kritični parametri -> Obavesti lekara"
+    salience 50
+    when
+        $p: Pacijent(kategorijaTemperature == "NISKA" ||
+                     kategorijaTemperature == "VISOKA" ||
+                     kategorijaPritiska == "NIZAK" ||
+                     kategorijaPritiska == "VISOK")
+        not(StatusPoruka(poruka == "LEKAR_OBAVESTEN" || poruka == "LEKAR_HITNO_OBAVESTEN"))
+    then
+        insert(new StatusPoruka("LEKAR_OBAVESTEN"));
+        System.out.println("Sistem: Detektovane odstupajuće vrednosti. Obaveštava se lekar.");
+end
+
+rule "Optimalni parametri -> Započni terapiju"
+    salience 40
+    when
+        $p: Pacijent(kategorijaTemperature == "NORMALNA", kategorijaPritiska == "NORMALAN")
+        not(StatusPoruka(poruka == "LEKAR_OBAVESTEN" || poruka == "LEKAR_HITNO_OBAVESTEN"))
+    then
+        insert(new StatusPoruka("ZAPOCNI_TERAPIJU"));
+        System.out.println("Naredba sestre: Parametri su u redu. Započeti terapiju.");
+end
