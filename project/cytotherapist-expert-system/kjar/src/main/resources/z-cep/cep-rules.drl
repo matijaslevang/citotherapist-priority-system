@@ -1,0 +1,169 @@
+package z-cep;
+
+import com.ftn.sbnz.model.general.Patient;
+
+import com.ftn.sbnz.model.cep.BreathingPatternChangeEvent;
+import com.ftn.sbnz.model.cep.CoughEvent;
+import com.ftn.sbnz.model.cep.CriticalPressureChangeEvent;
+import com.ftn.sbnz.model.cep.CriticalTemperatureChangeEvent;
+import com.ftn.sbnz.model.cep.HiccupEvent;
+import com.ftn.sbnz.model.cep.MediumPressureChangeEvent;
+import com.ftn.sbnz.model.cep.MediumTemperatureChangeEvent;
+import com.ftn.sbnz.model.cep.MinimalBreathingPatternChangeEvent;
+import com.ftn.sbnz.model.cep.MinimumPressureChangeEvent;
+import com.ftn.sbnz.model.cep.MinimumTemperatureChangeEvent;
+import com.ftn.sbnz.model.cep.PainComplaintEvent;
+import com.ftn.sbnz.model.cep.SkinChangeEvent;
+
+import com.ftn.sbnz.model.cep.TemperatureReadingEvent;
+import com.ftn.sbnz.model.cep.PressureReadingEvent;
+import com.ftn.sbnz.model.cep.BreathingReadingEvent;
+
+import java.util.List;
+
+// Pravilo 1: Ako se temperatura podigla ili spustila za 0.1 stepen u odnosu na x
+rule "Pravilo 1 - Detekcija minimalne promene u temperaturi"
+when
+    $pacijent: Patient($x: currentTemperature)
+    
+    $ocitavanje: TemperatureReadingEvent(
+        $novaTemp: value,
+        Math.abs(value - $x) >= 0.1
+    )
+then
+    insert(new MinimumTemperatureChangeEvent());
+    
+    modify($pacijent) {
+        setCurrentTemperature($novaTemp)
+    }
+    
+    delete($ocitavanje);
+    
+    System.out.println("CEP: Detektovana minimalna promena temperature. Nova referentna vrednost: " + $novaTemp);
+end
+
+
+// Pravilo 2: Ako se gornji pritisak promenio za 2 u odnosu na y, ili donji pritisak za 1 u odnosu na z
+rule "Pravilo 2 - Detekcija minimalne promene u pritisku"
+when
+    $pacijent: Patient($y: currentUpperPressure, $z: currentLowerPressure)
+    
+    $ocitavanje: PressureReadingEvent(
+        $noviGornji: upperPressure,
+        $noviDonji: lowerPressure,
+        (Math.abs(upperPressure - $y) >= 2) || (Math.abs(lowerPressure - $z) >= 1)
+    )
+then
+    insert(new MinimumPressureChangeEvent());
+    
+    modify($pacijent) {
+        setCurrentUpperPressure($noviGornji),
+        setCurrentLowerPressure($noviDonji)
+    }
+    
+    delete($ocitavanje);
+    
+    System.out.println("CEP: Detektovana minimalna promena pritiska. Nove referentne vrednosti: " + $noviGornji + "/" + $noviDonji);
+end
+
+// Pravilo 3: Ako je detektovana minimalna promena u temperaturi pet puta -> detektovana promena u temperaturi
+rule "Pravilo 3 - Promena u temperaturi (5 minimalnih)"
+when
+    $events: List(size >= 5) from collect( MinimumTemperatureChangeEvent() )
+then
+    for(Object e : $events) {
+        delete(e);
+    }
+    insert(new MediumTemperatureChangeEvent());
+    System.out.println("CEP: Detektovana promena u temperaturi.");
+end
+
+// Pravilo 4: Ako je detektovana promena u temperaturi tri puta -> detektovana velika promena u temperaturi
+rule "Pravilo 4 - Velika promena u temperaturi (3 srednje)"
+when
+    $events: List(size >= 3) from collect( MediumTemperatureChangeEvent() )
+then
+    for(Object e : $events) {
+        delete(e);
+    }
+    insert(new CriticalTemperatureChangeEvent());
+    System.out.println("CEP: Detektovana velika promena u temperaturi.");
+end
+
+// Pravilo 5: Ako je detektovana minimalna promena u pritisku pet puta -> detektovana promena u pritisku
+rule "Pravilo 5 - Promena u pritisku (5 minimalnih)"
+when
+    $events: List(size >= 5) from collect( MinimumPressureChangeEvent() )
+then
+    for(Object e : $events) {
+        delete(e);
+    }
+    insert(new MediumPressureChangeEvent());
+    System.out.println("CEP: Detektovana promena u pritisku.");
+end
+
+// Pravilo 6: Ako je detektovana promena u pritisku tri puta -> detektovana velika promena u pritisku
+rule "Pravilo 6 - Velika promena u pritisku (3 srednje)"
+when
+    $events: List(size >= 3) from collect( MediumPressureChangeEvent() )
+then
+    for(Object e : $events) {
+        delete(e);
+    }
+    insert(new CriticalPressureChangeEvent());
+    System.out.println("CEP: Detektovana velika promena u pritisku.");
+end
+
+// Pravilo 7: Ako se ciklus disanja promenio za 0.5s u odnosu na m
+rule "Pravilo 7 - Detekcija minimalne promene u disanju"
+when
+    $pacijent: Patient($m: currentBreathingCycle)
+    
+    $ocitavanje: BreathingReadingEvent(
+        $noviCiklus: cycleLength,
+        Math.abs(cycleLength - $m) >= 0.5
+    )
+then
+    insert(new MinimalBreathingPatternChangeEvent());
+    
+    modify($pacijent) {
+        setCurrentBreathingCycle($noviCiklus)
+    }
+    
+    delete($ocitavanje);
+    
+    System.out.println("CEP: Detektovana minimalna promena ciklusa disanja. Nova referentna vrednost: " + $noviCiklus);
+end
+
+// Pravilo 8: Ako je detektovano tri minimalne promene u disanju -> detektovana promena u disanju
+rule "Pravilo 8 - Promena u disanju (3 minimalne)"
+when
+    $events: List(size >= 3) from collect( MinimalBreathingPatternChangeEvent() )
+then
+    for(Object e : $events) {
+        delete(e);
+    }
+    insert(new BreathingPatternChangeEvent());
+    System.out.println("CEP: Detektovana promena u disanju.");
+end
+
+// Pravilo 9: Ako je detektovano štucanje ili kašljucanje uz promene u disanju -> obavestiti lekara
+rule "Pravilo 9 - Štucanje/kašljanje uz promenu u disanju"
+when
+    BreathingPatternChangeEvent()
+    ( HiccupEvent() or CoughEvent() )
+then
+    System.out.println("OBAVEŠTENJE: Obavestiti lekara (Štucanje ili kašljanje uz promenu disanja).");
+end
+
+// Pravilo 10: Ako je detektovano žaljenje na bol, reakcija kože, velika promena u temperaturi ili velika promena u pritisku -> hitno obavestiti lekara
+rule "Pravilo 10 - Hitno obaveštenje lekara"
+when
+    ( PainComplaintEvent() or
+      SkinChangeEvent() or
+      CriticalTemperatureChangeEvent() or
+      CriticalPressureChangeEvent() )
+then
+    System.out.println("HITNO OBAVEŠTENJE: Hitno obavestiti lekara zbog kritičnog simptoma.");
+    drools.halt();
+end

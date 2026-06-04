@@ -1,0 +1,11 @@
+<kmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://jboss.org/kie/6.0.0/kmodule">
+
+    <kbase name="template-protocol" packages="template-dtable">
+        <ksession name="templateProtocolSession"/>
+    </kbase>
+
+    <kbase name="cepKbase" eventProcessingMode="stream" packages="cep">
+        <ksession name="cepKsession"/>
+    </kbase>
+
+</kmodule>
