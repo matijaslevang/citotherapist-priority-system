@@ -1,0 +1,159 @@
+package z_forward;
+
+import com.ftn.sbnz.model.general.Patient;
+import com.ftn.sbnz.model.forward.TemperatureAssessment;
+import com.ftn.sbnz.model.forward.PressureAssessment;
+import com.ftn.sbnz.model.forward.Symptom;
+import com.ftn.sbnz.model.forward.NurseAction;
+
+// ==========================================
+// 1. PRAVILA ZA TEMPERATURU
+// ==========================================
+
+rule "T1 - Izuzetno niska temperatura"
+when
+    Patient(currentTemperature < 35.2)
+then
+    insert(new TemperatureAssessment("IZUZETNO_NISKA"));
+end
+
+rule "T2 - Niska temperatura"
+when
+    Patient(currentTemperature >= 35.2, currentTemperature < 36.2)
+then
+    insert(new TemperatureAssessment("NISKA"));
+end
+
+rule "T3 - Normalna temperatura"
+when
+    Patient(currentTemperature >= 36.2, currentTemperature < 37.2)
+then
+    insert(new TemperatureAssessment("NORMALNA"));
+end
+
+rule "T4 - Povisena temperatura"
+when
+    Patient(currentTemperature >= 37.2, currentTemperature < 38.0)
+then
+    insert(new TemperatureAssessment("POVISENA"));
+end
+
+rule "T5 - Visoka temperatura"
+when
+    Patient(currentTemperature >= 38.0, currentTemperature <= 39.0)
+then
+    insert(new TemperatureAssessment("VISOKA"));
+end
+
+rule "T6 - Izuzetno visoka temperatura"
+when
+    Patient(currentTemperature > 39.0)
+then
+    insert(new TemperatureAssessment("IZUZETNO_VISOKA"));
+end
+
+// ==========================================
+// 2. PRAVILA ZA PRITISAK
+// ==========================================
+
+rule "P1 - Normalan pritisak"
+when
+    Patient(
+        currentUpperPressure >= 115, currentUpperPressure <= 122,
+        currentLowerPressure >= 68, currentLowerPressure <= 72
+    )
+then
+    insert(new PressureAssessment("NORMALAN"));
+end
+
+rule "P2 - Nizak pritisak"
+when
+    Patient(
+        currentUpperPressure >= 90, currentUpperPressure < 115,
+        currentLowerPressure >= 60, currentLowerPressure < 68
+    )
+then
+    insert(new PressureAssessment("NIZAK"));
+end
+
+rule "P3 - Izuzetno nizak pritisak"
+when
+    Patient(currentUpperPressure < 90, currentLowerPressure < 60)
+then
+    insert(new PressureAssessment("IZUZETNO_NIZAK"));
+end
+
+rule "P4 - Povisen pritisak"
+when
+    Patient(
+        currentUpperPressure > 122, currentUpperPressure <= 130,
+        currentLowerPressure > 72, currentLowerPressure <= 80
+    )
+then
+    insert(new PressureAssessment("POVISEN"));
+end
+
+rule "P5 - Visok pritisak"
+when
+    Patient(
+        currentUpperPressure > 130, currentUpperPressure <= 150,
+        currentLowerPressure > 80, currentLowerPressure <= 90
+    )
+then
+    insert(new PressureAssessment("VISOK"));
+end
+
+rule "P6 - Izuzetno visok pritisak"
+when
+    Patient(currentUpperPressure > 150, currentLowerPressure > 90)
+then
+    insert(new PressureAssessment("IZUZETNO_VISOK"));
+end
+
+// ==========================================
+// 3. PRAVILA ZA SIMPTOME
+// ==========================================
+
+rule "S1 - Zaljenje na bolove"
+when
+    Symptom(type == "BOLOVI")
+then
+    insert(new NurseAction("OBAVESTITI_LEKARA"));
+end
+
+rule "S2 - Zaljenje na tegobe"
+when
+    Symptom(type == "TEGOBE")
+then
+    insert(new NurseAction("OBAVESTITI_LEKARA"));
+end
+
+// ==========================================
+// 4. PRAVILA ZA FINALNU AKCIJU (Forward Chaining rasplet)
+// ==========================================
+
+rule "A1 - Hitno obavestiti lekara zbog ekstremnih parametara"
+when
+    TemperatureAssessment(status == "IZUZETNO_NISKA" || status == "IZUZETNO_VISOKA")
+    or
+    PressureAssessment(status == "IZUZETNO_NIZAK" || status == "IZUZETNO_VISOK")
+then
+    insert(new NurseAction("HITNO_OBAVESTITI_LEKARA"));
+end
+
+rule "A2 - Obavestiti lekara zbog losih parametara"
+when
+    TemperatureAssessment(status == "NISKA" || status == "VISOKA")
+    or
+    PressureAssessment(status == "NIZAK" || status == "VISOK")
+then
+    insert(new NurseAction("OBAVESTITI_LEKARA"));
+end
+
+rule "A3 - Zapoceti terapiju"
+when
+    TemperatureAssessment(status == "NORMALNA")
+    PressureAssessment(status == "NORMALAN")
+then
+    insert(new NurseAction("ZAPOCETI_TERAPIJU"));
+end

@@ -4,30 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.example</groupId>
+    <groupId>com.ftn.sbnz</groupId>
     <artifactId>cytotherapist-expert-system</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
-    <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+    <modules>
+        <module>model</module>
+        <module>kjar</module>
+        <module>service</module>
+    </modules>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.kie</groupId>
-            <artifactId>kie-api</artifactId>
-            <version>8.44.0.Final</version> </dependency>
-        <dependency>
-            <groupId>org.drools</groupId>
-            <artifactId>drools-engine</artifactId>
-            <version>8.44.0.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>1.7.36</version> <scope>test</scope>
-        </dependency>
-    </dependencies>
 </project>
