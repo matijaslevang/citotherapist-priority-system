@@ -1,0 +1,31 @@
+template header
+ProtocolName
+Cycle
+PrepAmpoule
+PrepSolution
+PrepDuration
+Medication
+Dose
+Solution
+Duration
+
+package z_templates;
+
+import com.ftn.sbnz.model.general.Patient;
+
+template "therapy-protocols"
+
+rule "Protocol_@{ProtocolName}_Cycle_@{Cycle}_@{row.rowNumber}"
+no-loop true
+when
+    $p: Patient(
+        protocol == "@{ProtocolName}",
+        currentCycle == @{Cycle}
+    )
+then
+    // Prikaz instrukcija za medicinsku sestru
+    System.out.println("Priprema: Prvo se daje @{PrepAmpoule} rastvorena u @{PrepSolution}ml fiziološkog rastvora u vremenskom periodu od @{PrepDuration}.");
+    System.out.println("Terapija: Zatim se daje terapija, gde se @{Medication} u dozi od @{Dose}mg rastvori u @{Solution}ml fiziološkog rastvora u vremenskom periodu od @{Duration}.");
+end
+
+end template

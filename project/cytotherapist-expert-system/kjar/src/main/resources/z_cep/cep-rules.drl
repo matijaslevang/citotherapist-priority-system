@@ -1,4 +1,4 @@
-package z-cep;
+package z_cep;
 
 import com.ftn.sbnz.model.general.Patient;
 

@@ -4,6 +4,10 @@
         <ksession name="templateProtocolSession"/>
     </kbase>
 
+    <kbase name="forward-chaining" packages="z_forward">
+        <ksession name="forwardChainingKsession"/>
+    </kbase>
+
     <kbase name="cepKbase" eventProcessingMode="stream" packages="cep">
         <ksession name="cepKsession"/>
     </kbase>
