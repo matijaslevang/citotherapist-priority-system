@@ -1,9 +1,11 @@
 package com.ftn.sbnz.model.cep;
 
+import org.kie.api.definition.type.Expires;
 import org.kie.api.definition.type.Role;
 import java.io.Serializable;
 
 @Role(Role.Type.EVENT)
+@Expires("5s")
 public class BreathingReadingEvent implements Serializable {
     private static final long serialVersionUID = 1L;
 
