@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Admission & Treatment Simulator</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b; overflow: hidden; user-select: none; }
+        .main-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        .content-area { height: 80vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 3rem; text-align: center; position: relative; background: radial-gradient(circle at center, #ffffff 0%, #f1f5f9 100%); transition: background 0.5s ease; }
+        
+        .content-area::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, #eab308 0%, #ffffff 35%, #f1f5f9 100%);
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .content-area.skin-reaction::before { opacity: 1; }
+        .content-area > * { position: relative; z-index: 1; }
+
+        .button-area { height: 20vh; display: flex; justify-content: center; align-items: center; background-color: #e2e8f0; border-top: 2px solid #cbd5e1; z-index: 10; }
+        .main-message { font-size: 2.5rem; font-weight: 700; line-height: 1.3; max-width: 900px; margin-bottom: 2rem; transition: all 0.3s ease; }
+        .alert-text { color: #dc2626; font-size: 3.5rem; text-transform: uppercase; letter-spacing: -0.02em; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+        
+        /* New Cookie-Clicker Style Animation for Events */
+        .pop-text {
+            position: absolute;
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #dc2626;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 100;
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 0 4px 10px rgba(220, 38, 38, 0.4);
+            animation: popUp 1.2s ease-out forwards;
+        }
+
+        @keyframes popUp {
+            0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+            15% { opacity: 1; transform: scale(1.2) translateY(0); }
+            80% { opacity: 1; transform: scale(1) translateY(-15px); }
+            100% { opacity: 0; transform: scale(0.8) translateY(-40px); }
+        }
+
+        .form-container { background: #ffffff; padding: 2.5rem; border-radius: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 2rem; margin-top: 1rem; animation: fadeIn 0.4s ease-out; }
+        
+        /* Updated Form Layout for Perfect Alignment */
+        .form-row { display: flex; flex-direction: column; gap: 1.25rem; }
+        .input-group { display: flex; flex-direction: row; align-items: center; width: 100%; }
+        .input-group label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0; width: 220px; flex-shrink: 0; text-align: left; }
+        .input-group input[type="number"] { width: 100%; flex-grow: 1; padding: 0.75rem 1rem; border: 2px solid #cbd5e1; border-radius: 0.5rem; font-size: 1.15rem; font-weight: 600; color: #0f172a; outline: none; transition: border-color 0.2s ease; }
+        .input-group input[type="number"]:focus { border-color: #2563eb; }
+        
+        .checkbox-row { display: flex; justify-content: flex-start; gap: 3rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
+        .checkbox-group { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+        .checkbox-group input[type="checkbox"] { width: 1.4rem; height: 1.4rem; cursor: pointer; accent-color: #2563eb; }
+        .checkbox-group label { font-size: 1.1rem; font-weight: 500; color: #334155; cursor: pointer; }
+        
+        .progress-wrapper { width: 100%; max-width: 550px; margin-top: 1rem; animation: fadeIn 0.3s ease-out; }
+        .progress-container { width: 100%; background-color: #cbd5e1; border-radius: 9999px; height: 1.75rem; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+        .progress-bar { height: 100%; width: 0%; background-color: #10b981; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .progress-text { margin-top: 0.75rem; font-size: 1rem; font-weight: 600; color: #64748b; }
+        
+        .next-btn { width: 20vw; min-width: 180px; padding: 1.25rem 2rem; font-size: 1.4rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; background-color: #2563eb; color: #ffffff; border: none; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
+        .next-btn:hover:not(:disabled) { background-color: #1d4ed8; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3); }
+        .next-btn:active:not(:disabled) { transform: translateY(0); }
+        .next-btn:disabled { background-color: #94a3b8; color: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .paperwork-canvas { background: #ffffff; border: 2px solid #cbd5e1; border-radius: 0.5rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); animation: fadeIn 0.4s ease-out; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="content-area" id="contentArea">
+            <div class="main-message" id="mainMessage">A patient is waiting for admission</div>
+            <div id="dynamicContainer"></div>
+        </div>
+
+        <div class="button-area">
+            <button class="next-btn" id="nextBtn" onclick="handleNext()">next</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/api';
+        const WS_URL = 'http://localhost:8080/ws-events';
+        
+        let currentState = 1;
+        let treatment = {};
+        let stompClient = null;
+
+        const mainMessage = document.getElementById('mainMessage');
+        const dynamicContainer = document.getElementById('dynamicContainer');
+        const nextBtn = document.getElementById('nextBtn');
+        const contentArea = document.getElementById('contentArea');
+
+        // --- WEBSOCKET CONNECTION ---
+        function connectWebSocket() {
+            if (stompClient !== null) return; 
+
+            const socket = new SockJS(WS_URL);
+            stompClient = window.Stomp.over(socket);
+            
+            stompClient.debug = null; 
+
+            stompClient.connect({}, function (frame) {
+                console.log('Connected to CEP Event Stream');
+                
+                stompClient.subscribe('/topic/events', function (message) {
+                    handleBackendEvent(message.body);
+                });
+            }, function(error) {
+                console.error("WebSocket Connection Error:", error);
+            });
+        }
+
+        // --- HANDLE SERVER EVENTS ---
+        function handleBackendEvent(eventType) {
+            const isInjecting = (currentState === 4 || currentState === 5);
+            if (!isInjecting) return;
+
+            const rule9Events = {
+                'RULE9_COUGH_WITH_BREATHING_CHANGE': 'COUGH',
+                'RULE9_HICCUP_WITH_BREATHING_CHANGE': 'HICCUP'
+            };
+
+            const rule10Events = {
+                'RULE10_PAIN_COMPLAINT': 'OUCH',
+                'RULE10_SKIN_CHANGE': 'SKIN_REACTION',
+                'RULE10_CRITICAL_TEMPERATURE': 'CRITICAL TEMP',
+                'RULE10_CRITICAL_PRESSURE': 'CRITICAL PRESSURE'
+            };
+
+
+            if (eventType in rule9Events) {
+                spawnTextEvent(rule9Events[eventType]);
+                setTimeout(() => triggerAlert('Doctor notified: ' + rule9Events[eventType] + ' with breathing pattern change'), 1000);
+            }
+            else if (eventType in rule10Events) {
+                if (eventType === 'RULE10_SKIN_CHANGE') {
+                    contentArea.classList.add('skin-reaction');
+                } else {
+                    spawnTextEvent(rule10Events[eventType]);
+                }
+                setTimeout(() => triggerAlert('Alert a doctor immediately! Reason: ' + rule10Events[eventType]), 1000);
+            }
+            else if (isInjecting) {
+                if (eventType === 'COUGH' || eventType === 'HICCUP') {
+                    spawnTextEvent(eventType);
+                }
+            }
+        }
+
+        function triggerAlert(message = 'Alert a doctor immediately!') {
+            if (currentState === 'alert') return; // Prevent spamming
+            currentState = 'alert';
+            // Tell backend to stop rolling
+            fetch(`${API_BASE_URL}/stop-injection`).catch(e => console.error(e));
+            renderState(message);
+        }
+
+        function spawnTextEvent(displayText) {
+            const textElement = document.createElement('div');
+            textElement.className = 'pop-text';
+            textElement.textContent = displayText;
+            
+            const randomX = Math.floor(Math.random() * 70) + 15;
+            const randomY = Math.floor(Math.random() * 50) + 25;
+            textElement.style.left = randomX + '%';
+            textElement.style.top = randomY + '%';
+            
+            contentArea.appendChild(textElement);
+            setTimeout(() => textElement.remove(), 1200);
+        }
+
+        function drawPaperworkLine() {
+            const canvas = document.getElementById('paperworkCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            const startX = Math.random() * canvas.width;
+            const startY = Math.random() * canvas.height;
+            const endX = Math.random() * canvas.width;
+            const endY = Math.random() * canvas.height;
+            
+            const cp1x = Math.random() * canvas.width;
+            const cp1y = Math.random() * canvas.height;
+            const cp2x = Math.random() * canvas.width;
+            const cp2y = Math.random() * canvas.height;
+            
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        function renderState(alertMessage) {
+            dynamicContainer.innerHTML = '';
+            mainMessage.className = 'main-message';
+            nextBtn.disabled = false;
+            contentArea.classList.remove('skin-reaction'); // Reset skin reaction on state change
+
+            if (currentState === 1) {
+                mainMessage.textContent = "A patient is waiting for admission";
+            } 
+            else if (currentState === 2) {
+                mainMessage.textContent = "Fill out the admission form";
+                
+                dynamicContainer.innerHTML = `
+                    <div class="form-container">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label for="tempInput">Temperature (°C)</label>
+                                <input type="number" id="tempInput" step="0.1" value="36.6">
+                            </div>
+                            <div class="input-group">
+                                <label for="upperPres">Upper Pressure (mmHg)</label>
+                                <input type="number" id="upperPres" value="120">
+                            </div>
+                            <div class="input-group">
+                                <label for="lowerPres">Lower Pressure (mmHg)</label>
+                                <input type="number" id="lowerPres" value="80">
+                            </div>
+                        </div>
+                        <div class="checkbox-row">
+                            <div class="checkbox-group" onclick="document.getElementById('painCheck').click(); event.stopPropagation();">
+                                <input type="checkbox" id="painCheck" onclick="event.stopPropagation();">
+                                <label for="painCheck">Pain complaints</label>
+                            </div>
+                            <div class="checkbox-group" onclick="document.getElementById('pastCheck').click(); event.stopPropagation();">
+                                <input type="checkbox" id="pastCheck" onclick="event.stopPropagation();">
+                                <label for="pastCheck">Past issues</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } 
+            else if (currentState === 'alert') {
+                mainMessage.textContent = alertMessage || 'Alert a doctor immediately!';
+                mainMessage.classList.add('alert-text');
+            } 
+            else if (currentState === 'well') {
+                mainMessage.textContent = "The patient is well, you may begin treatment";
+            }
+            else if (currentState === 3) {
+                mainMessage.textContent = `This patient requires ${treatment.prepAmpouleAmount}ml of prep ampoule ${treatment.prepAmpouleName} injected over the span of ${treatment.prepAmpouleTime} minutes. After that, the patient needs ${treatment.medicineAmount}mg of medicine ${treatment.medicineName} (solvent: ${treatment.medicineSolventAmount}ml) injected over the span of ${treatment.medicineTime} minutes.`;
+            } 
+            else if (currentState === 4) {
+                mainMessage.textContent = "Injecting...";
+                nextBtn.disabled = true;
+
+                dynamicContainer.innerHTML = `
+                    <div class="progress-wrapper">
+                        <div class="progress-container">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Preparing Prep Ampoule ${treatment.prepAmpouleName}...</div>
+                    </div>
+                `;
+                
+                runProgressBar(treatment.prepAmpouleTime, () => {
+                    if(currentState !== 'alert') {
+                        mainMessage.textContent = "Prep ampoule injection complete.";
+                        document.getElementById('progressText').textContent = "Ready for the next step.";
+                        nextBtn.disabled = false;
+                    }
+                });
+            } 
+            else if (currentState === 5) {
+                mainMessage.textContent = "Injecting...";
+                nextBtn.disabled = true;
+
+                dynamicContainer.innerHTML = `
+                    <div class="progress-wrapper">
+                        <div class="progress-container">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Administering Medicine ${treatment.medicineName}...</div>
+                    </div>
+                `;
+
+                runProgressBar(treatment.medicineTime, () => {
+                    if(currentState !== 'alert') {
+                        mainMessage.textContent = "Medicine injection complete!";
+                        document.getElementById('progressText').textContent = "Session complete. Press Next to finish.";
+                        nextBtn.disabled = false;
+
+                        // Stop the background rolling now that we are done injecting
+                        fetch(`${API_BASE_URL}/stop-injection`).catch(e => console.error(e));
+                    }
+                });
+            }
+            else if (currentState === 'paperwork') {
+                mainMessage.textContent = "Doing paperwork";
+                dynamicContainer.innerHTML = `
+                    <canvas id="paperworkCanvas" class="paperwork-canvas" width="600" height="300"></canvas>
+                `;
+            }
+            else if (currentState === 'no-protocol') {
+                mainMessage.textContent = "No protocol generated by the backend rules.";
+                dynamicContainer.innerHTML = `
+                    <div style="background: #fee2e2; border: 2px solid #fca5a5; padding: 1.5rem; border-radius: 0.5rem; max-width: 550px; margin-top: 1rem; color: #991b1b; font-weight: 600;">
+                        The Drools rules engine returned an empty response.<br>
+                        <span style="font-size: 0.9rem; font-weight: 400; color: #7f1d1d; display: block; margin-top: 0.5rem;">
+                            Reason: Check your server logs. Ensure the rules fired and generated a ProtocolInformation object.
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        function runProgressBar(durationInSeconds, onComplete) {
+            const bar = document.getElementById('progressBar');
+            let start = null;
+            const durationMs = (durationInSeconds || 5) * 1000; 
+
+            function frame(timestamp) {
+                if (currentState === 'alert') return; 
+
+                if (!start) start = timestamp;
+                const elapsed = timestamp - start;
+                const progress = Math.min((elapsed / durationMs) * 100, 100);
+                
+                if (bar) bar.style.width = progress + '%';
+
+                if (elapsed < durationMs) {
+                    requestAnimationFrame(frame);
+                } else {
+                    onComplete();
+                }
+            }
+            requestAnimationFrame(frame);
+        }
+
+        async function handleNext() {
+            if (currentState === 1) {
+                currentState = 2;
+                renderState();
+            } 
+            else if (currentState === 2) {
+                nextBtn.disabled = true;
+                nextBtn.textContent = "Sending...";
+
+                const vitalsDTO = {
+                    temperature: parseFloat(document.getElementById('tempInput').value) || 0,
+                    upperPressure: parseFloat(document.getElementById('upperPres').value) || 0,
+                    lowerPressure: parseFloat(document.getElementById('lowerPres').value) || 0,
+                    hadPainComplaints: document.getElementById('painCheck').checked,
+                    hadMedicalIssues: document.getElementById('pastCheck').checked
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/initial-vitals-reading`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(vitalsDTO)
+                    });
+                    const startTherapy = await response.json();
+                    currentState = startTherapy ? 'well' : 'alert';
+                } catch (e) {
+                    console.error("Failed to connect to backend", e);
+                    alert("Cannot connect to Spring Boot backend!");
+                }
+                nextBtn.textContent = "next";
+                renderState();
+            } 
+            else if (currentState === 'well') {
+                nextBtn.disabled = true;
+                nextBtn.textContent = "Loading Protocol...";
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/get-protocol-information`);
+                    const rawText = await response.text(); 
+                    
+                    if (!rawText || rawText.trim() === "" || rawText === "null") {
+                        treatment = {};
+                        currentState = 'no-protocol'; 
+                    } else {
+                        treatment = JSON.parse(rawText);
+                        currentState = 3;
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch protocol", e);
+                    currentState = 'no-protocol';
+                }
+
+                nextBtn.textContent = "next";
+                renderState();
+            }
+            else if (currentState === 'alert' || currentState === 5 || currentState === 'no-protocol') {
+                nextBtn.disabled = true;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/finish-patient`);
+                    const changeToPaperwork = await response.json();
+                    currentState = changeToPaperwork ? 'paperwork' : 1;
+                } catch (e) {
+                    currentState = 1;
+                }
+                nextBtn.disabled = false;
+                renderState();
+            } 
+            else if (currentState === 3) {
+                currentState = 4;
+                // Tell backend to start rolling for events
+                fetch(`${API_BASE_URL}/start-injection`).catch(e => console.error(e));
+                renderState();
+            } 
+            else if (currentState === 4) {
+                currentState = 5;
+                renderState();
+            } 
+            else if (currentState === 'paperwork') {
+                nextBtn.disabled = true;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/do-paperwork`);
+                    const changeToPatient = await response.json();
+                    if (changeToPatient) {
+                        currentState = 1;
+                    } else {
+                        drawPaperworkLine();
+                    }
+                } catch (e) {
+                    drawPaperworkLine();
+                }
+                nextBtn.disabled = false;
+                if (currentState === 1) renderState();
+            }
+        }
+
+        // Initialize WebSockets as soon as the page loads
+        connectWebSocket();
+        renderState();
+    </script>
+</body>
+</html>

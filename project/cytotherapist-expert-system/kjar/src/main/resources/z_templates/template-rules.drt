@@ -12,6 +12,7 @@ Duration
 package z_templates;
 
 import com.ftn.sbnz.model.general.Patient;
+import com.ftn.sbnz.model.template.ProtocolInformation;
 
 template "therapy-protocols"
 
@@ -26,6 +27,17 @@ then
     // Prikaz instrukcija za medicinsku sestru
     System.out.println("Priprema: Prvo se daje @{PrepAmpoule} rastvorena u @{PrepSolution}ml fiziološkog rastvora u vremenskom periodu od @{PrepDuration}.");
     System.out.println("Terapija: Zatim se daje terapija, gde se @{Medication} u dozi od @{Dose}mg rastvori u @{Solution}ml fiziološkog rastvora u vremenskom periodu od @{Duration}.");
+
+    ProtocolInformation info = new ProtocolInformation();
+    info.setPrepAmpouleName("@{PrepAmpoule}");
+    info.setPrepAmpouleAmount(Double.valueOf("@{PrepSolution}"));
+    info.setPrepAmpouleTime("@{PrepDuration}");
+    info.setMedicineName("@{Medication}");
+    info.setMedicineAmount(Double.valueOf("@{Dose}"));
+    info.setMedicineSolventAmount(Double.valueOf("@{Solution}"));
+    info.setMedicineTime("@{Duration}");
+
+    insert(info);
 end
 
 end template

@@ -1,6 +1,9 @@
 <kmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://jboss.org/kie/6.0.0/kmodule">
 
-    <kbase name="template-protocol" packages="template-dtable">
+    <kbase name="template-protocol" packages="z_templates">
+        <ruleTemplate dtable="z_templates/template-data.xls" 
+                      template="z_templates/template-rules.drt" 
+                      row="3" col="2"/>
         <ksession name="templateProtocolSession"/>
     </kbase>
 
@@ -8,7 +11,7 @@
         <ksession name="forwardChainingKsession"/>
     </kbase>
 
-    <kbase name="cepKbase" eventProcessingMode="stream" packages="cep">
+    <kbase name="cepKbase" eventProcessingMode="stream" packages="z_cep">
         <ksession name="cepKsession"/>
     </kbase>
 

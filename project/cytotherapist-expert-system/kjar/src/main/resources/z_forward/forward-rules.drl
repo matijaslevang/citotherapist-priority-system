@@ -154,6 +154,7 @@ rule "A3 - Zapoceti terapiju"
 when
     TemperatureAssessment(status == "NORMALNA")
     PressureAssessment(status == "NORMALAN")
+    not Symptom(type == "BOLOVI" || type == "TEGOBE")
 then
     insert(new NurseAction("ZAPOCETI_TERAPIJU"));
 end

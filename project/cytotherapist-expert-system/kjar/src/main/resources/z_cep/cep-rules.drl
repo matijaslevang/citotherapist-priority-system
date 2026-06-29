@@ -21,33 +21,24 @@ import com.ftn.sbnz.model.cep.BreathingReadingEvent;
 
 import java.util.List;
 
-// Pravilo 1: Ako se temperatura podigla ili spustila za 0.1 stepen u odnosu na x
+// Pravilo 1: unchanged - just detects the delta and updates reference
 rule "Pravilo 1 - Detekcija minimalne promene u temperaturi"
 when
     $pacijent: Patient($x: currentTemperature)
-    
     $ocitavanje: TemperatureReadingEvent(
         $novaTemp: value,
         Math.abs(value - $x) >= 0.1
     )
 then
     insert(new MinimumTemperatureChangeEvent());
-    
-    modify($pacijent) {
-        setCurrentTemperature($novaTemp)
-    }
-    
+    modify($pacijent) { setCurrentTemperature($novaTemp) }
     delete($ocitavanje);
-    
-    System.out.println("CEP: Detektovana minimalna promena temperature. Nova referentna vrednost: " + $novaTemp);
 end
 
-
-// Pravilo 2: Ako se gornji pritisak promenio za 2 u odnosu na y, ili donji pritisak za 1 u odnosu na z
+// Pravilo 2: unchanged - just detects the delta and updates reference
 rule "Pravilo 2 - Detekcija minimalne promene u pritisku"
 when
     $pacijent: Patient($y: currentUpperPressure, $z: currentLowerPressure)
-    
     $ocitavanje: PressureReadingEvent(
         $noviGornji: upperPressure,
         $noviDonji: lowerPressure,
@@ -55,108 +46,101 @@ when
     )
 then
     insert(new MinimumPressureChangeEvent());
-    
     modify($pacijent) {
         setCurrentUpperPressure($noviGornji),
         setCurrentLowerPressure($noviDonji)
     }
-    
     delete($ocitavanje);
-    
-    System.out.println("CEP: Detektovana minimalna promena pritiska. Nove referentne vrednosti: " + $noviGornji + "/" + $noviDonji);
 end
 
-// Pravilo 3: Ako je detektovana minimalna promena u temperaturi pet puta -> detektovana promena u temperaturi
-rule "Pravilo 3 - Promena u temperaturi (5 minimalnih)"
+// Pravilo 3: 5 minimal temperature changes within a 2-minute window
+rule "Pravilo 3 - Promena u temperaturi (5 minimalnih u 2 minuta)"
 when
-    $events: List(size >= 5) from collect( MinimumTemperatureChangeEvent() )
+    $events: List(size >= 5) from collect(
+        MinimumTemperatureChangeEvent() over window:time(2m)
+    )
 then
-    for(Object e : $events) {
-        delete(e);
-    }
+    for(Object e : $events) { delete(e); }
     insert(new MediumTemperatureChangeEvent());
     System.out.println("CEP: Detektovana promena u temperaturi.");
 end
 
-// Pravilo 4: Ako je detektovana promena u temperaturi tri puta -> detektovana velika promena u temperaturi
-rule "Pravilo 4 - Velika promena u temperaturi (3 srednje)"
+// Pravilo 4: 3 medium temperature changes within a 10-minute window
+rule "Pravilo 4 - Velika promena u temperaturi (3 srednje u 10 minuta)"
 when
-    $events: List(size >= 3) from collect( MediumTemperatureChangeEvent() )
+    $events: List(size >= 3) from collect(
+        MediumTemperatureChangeEvent() over window:time(10m)
+    )
 then
-    for(Object e : $events) {
-        delete(e);
-    }
+    for(Object e : $events) { delete(e); }
     insert(new CriticalTemperatureChangeEvent());
     System.out.println("CEP: Detektovana velika promena u temperaturi.");
 end
 
-// Pravilo 5: Ako je detektovana minimalna promena u pritisku pet puta -> detektovana promena u pritisku
-rule "Pravilo 5 - Promena u pritisku (5 minimalnih)"
+// Pravilo 5: 5 minimal pressure changes within a 2-minute window
+rule "Pravilo 5 - Promena u pritisku (5 minimalnih u 2 minuta)"
 when
-    $events: List(size >= 5) from collect( MinimumPressureChangeEvent() )
+    $events: List(size >= 5) from collect(
+        MinimumPressureChangeEvent() over window:time(2m)
+    )
 then
-    for(Object e : $events) {
-        delete(e);
-    }
+    for(Object e : $events) { delete(e); }
     insert(new MediumPressureChangeEvent());
     System.out.println("CEP: Detektovana promena u pritisku.");
 end
 
-// Pravilo 6: Ako je detektovana promena u pritisku tri puta -> detektovana velika promena u pritisku
-rule "Pravilo 6 - Velika promena u pritisku (3 srednje)"
+// Pravilo 6: 3 medium pressure changes within a 10-minute window
+rule "Pravilo 6 - Velika promena u pritisku (3 srednje u 10 minuta)"
 when
-    $events: List(size >= 3) from collect( MediumPressureChangeEvent() )
+    $events: List(size >= 3) from collect(
+        MediumPressureChangeEvent() over window:time(10m)
+    )
 then
-    for(Object e : $events) {
-        delete(e);
-    }
+    for(Object e : $events) { delete(e); }
     insert(new CriticalPressureChangeEvent());
     System.out.println("CEP: Detektovana velika promena u pritisku.");
 end
 
-// Pravilo 7: Ako se ciklus disanja promenio za 0.5s u odnosu na m
+// Pravilo 7: unchanged - just detects the delta and updates reference
 rule "Pravilo 7 - Detekcija minimalne promene u disanju"
 when
     $pacijent: Patient($m: currentBreathingCycle)
-    
     $ocitavanje: BreathingReadingEvent(
         $noviCiklus: cycleLength,
         Math.abs(cycleLength - $m) >= 0.5
     )
 then
     insert(new MinimalBreathingPatternChangeEvent());
-    
-    modify($pacijent) {
-        setCurrentBreathingCycle($noviCiklus)
-    }
-    
+    modify($pacijent) { setCurrentBreathingCycle($noviCiklus) }
     delete($ocitavanje);
-    
-    System.out.println("CEP: Detektovana minimalna promena ciklusa disanja. Nova referentna vrednost: " + $noviCiklus);
 end
 
-// Pravilo 8: Ako je detektovano tri minimalne promene u disanju -> detektovana promena u disanju
-rule "Pravilo 8 - Promena u disanju (3 minimalne)"
+// Pravilo 8: 3 minimal breathing changes within a 3-minute window
+rule "Pravilo 8 - Promena u disanju (3 minimalne u 3 minuta)"
 when
-    $events: List(size >= 3) from collect( MinimalBreathingPatternChangeEvent() )
+    $events: List(size >= 3) from collect(
+        MinimalBreathingPatternChangeEvent() over window:time(3m)
+    )
 then
-    for(Object e : $events) {
-        delete(e);
-    }
+    for(Object e : $events) { delete(e); }
     insert(new BreathingPatternChangeEvent());
     System.out.println("CEP: Detektovana promena u disanju.");
 end
 
-// Pravilo 9: Ako je detektovano štucanje ili kašljucanje uz promene u disanju -> obavestiti lekara
+// Pravilo 9: Hiccup or cough occurs within 30 seconds of a breathing pattern change
 rule "Pravilo 9 - Štucanje/kašljanje uz promenu u disanju"
 when
-    BreathingPatternChangeEvent()
-    ( HiccupEvent() or CoughEvent() )
+    $breathing: BreathingPatternChangeEvent()
+    (
+        HiccupEvent(this after $breathing) over window:time(30s)
+        or 
+        CoughEvent(this after $breathing) over window:time(30s)
+    )
 then
     System.out.println("OBAVEŠTENJE: Obavestiti lekara (Štucanje ili kašljanje uz promenu disanja).");
 end
 
-// Pravilo 10: Ako je detektovano žaljenje na bol, reakcija kože, velika promena u temperaturi ili velika promena u pritisku -> hitno obavestiti lekara
+// Pravilo 10: unchanged - immediate critical alert
 rule "Pravilo 10 - Hitno obaveštenje lekara"
 when
     ( PainComplaintEvent() or
