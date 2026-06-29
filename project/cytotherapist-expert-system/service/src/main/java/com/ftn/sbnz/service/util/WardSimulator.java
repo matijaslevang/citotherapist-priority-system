@@ -100,7 +100,6 @@ public class WardSimulator {
 
         if (initialVitals.getHadPainComplaints()) {
              forwardSession.insert(new Symptom("BOLOVI"));
-             System.out.println("HELLOOOOOOOOOOOOOOO");
          }
          if (initialVitals.getHadMedicalIssues()) {
              forwardSession.insert(new Symptom("TEGOBE"));
